@@ -1,0 +1,231 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://xmtvtuafswmlbcsjifyu.hasura.ap-south-1.nhost.run/v1/graphql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-hasura-admin-secret",
+              "value": "={{$env.HASURA_ADMIN_SECRET}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"query ValidateChatOwnership($chatId: uuid!) { chats_by_pk(id: $chatId) { user_id } }\",\n  \"variables\": {\n    \"chatId\": \"{{$node[\\\"Parse Webhook\\\"].json[\\\"chat_id\\\"]}}\"\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [432, 0],
+      "id": "b573c335-9780-4bc4-9ae9-0ffd78f02be5",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sendMessage",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-32, -16],
+      "id": "a812c7ef-279d-4429-a4eb-2f3742f61a54",
+      "name": "Webhook",
+      "webhookId": "33eb5c45-800e-4734-b034-d44adf512c63"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d8ec1884-5180-4b77-9087-1f9a229f3198",
+              "leftValue": "={{$json[\"webhook_user_id\"]}}",
+              "rightValue": "={{$json[\"hasura_user_id\"]}}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [832, 16],
+      "id": "45b6d922-c1fc-4b82-b855-f46f4aa71460",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      chat_id: $node[\"Webhook\"].json[\"body\"].chatId,\n      content: $node[\"Webhook\"].json[\"body\"].content,\n      user_id: $node[\"Webhook\"].json[\"body\"].userId\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [208, -16],
+      "id": "09b6b014-b891-4752-9137-4efaf8aaea82",
+      "name": "Parse Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      webhook_user_id: $node[\"Parse Webhook\"].json[\"user_id\"].trim(),\n      hasura_user_id: $input.first().json.data.chats_by_pk.user_id.trim(),\n      status: $node[\"Parse Webhook\"].json[\"user_id\"].trim() === $input.first().json.data.chats_by_pk.user_id.trim() ? \"true\" : \"false\"\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [656, 16],
+      "id": "bb83c9d2-3709-4bd4-91e6-3c6dc39e4ca6",
+      "name": "Debug IDs"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      message: \"User owns the chat, proceeding...\"\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, -80],
+      "id": "18f823fa-59a9-4c3e-ade2-4fdb8c8b3cb0",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      status: \"error\",\n      message: \"User does not own this chat\"\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 112],
+      "id": "cef230ad-e026-4dc8-8c95-e441da8604c5",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://xmtvtuafswmlbcsjifyu.hasura.ap-south-1.nhost.run/v1/graphql",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={\n  \"Content-Type\": \"application/json\",\n  \"x-hasura-admin-secret\": \"={{$env.HASURA_ADMIN_SECRET}}\"\n}\n",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"mutation InsertMessage($chatId: uuid!, $userId: uuid!, $content: String!) { insert_messages_one(object: {chat_id: $chatId, user_id: $userId, content: $content}) { id content chat_id user_id created_at } }\",\n  \"variables\": {\n    \"chatId\": \"{{$node['Parse Webhook'].json['chat_id']}}\",\n    \"userId\": \"{{$node['Parse Webhook'].json['user_id']}}\",\n    \"content\": \"{{$node['Parse Webhook'].json['content']}}\"\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1344, -96],
+      "id": "079b401f-f231-4ae8-a8fd-cbf7a62e8d22",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={\n  \"Content-Type\": \"application/json\",\n  \"Authorization\": \"Bearer {{$env.OPENROUTER_API_KEY}}\"\n}\n",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{{$node['Parse Webhook'].json['content']}}\"\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1632, -96],
+      "id": "7155dc43-9112-481d-812d-391b006a412c",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      assistant_message: $input.first().json.choices[0].message.content\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1840, -96],
+      "id": "6d75deff-563c-4955-9afb-3afb41d6a967",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://xmtvtuafswmlbcsjifyu.hasura.ap-south-1.nhost.run/v1/graphql",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={\n  \"Content-Type\": \"application/json\",\n  \"x-hasura-admin-secret\": \"={{$env.HASURA_ADMIN_SECRET}}\"\n}\n",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"mutation InsertMessage($chatId: uuid!, $userId: uuid!, $content: String!) { insert_messages_one(object: {chat_id: $chatId, user_id: $userId, content: $content}) { id content chat_id user_id created_at } }\",\n  \"variables\": {\n    \"chatId\": \"{{$node['Parse Webhook'].json['chat_id']}}\",\n    \"userId\": \"b4c49bfe-b7c7-42fc-80a4-13cde9ef7a68\",\n    \"content\": \"{{ $json['assistant_message'].replace(/\\\\/g, '\\\\\\\\').replace(/\\\"/g, '\\\\\"').replace(/\\n/g, '\\\\n') }}\"\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2096, -80],
+      "id": "bc0d0d58-a074-4cef-874a-cf8bb1c8d53c",
+      "name": "HTTP Request3"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"bot_message\": {{JSON.stringify($node['Code2'].json['assistant_message'])}},\n  \"chat_id\": {{JSON.stringify($node['Parse Webhook'].json['chat_id'])}},\n  \"created_at\": {{JSON.stringify($now)}}\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [2352, -80],
+      "id": "bc5058be-c605-445e-a84f-cd35512359ff",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Parse Webhook", "type": "main", "index": 0 }]]
+    },
+    "HTTP Request": {
+      "main": [[{ "node": "Debug IDs", "type": "main", "index": 0 }]]
+    },
+    "Parse Webhook": {
+      "main": [[{ "node": "HTTP Request", "type": "main", "index": 0 }]]
+    },
+    "Debug IDs": { "main": [[{ "node": "If", "type": "main", "index": 0 }]] },
+    "If": {
+      "main": [
+        [{ "node": "Code", "type": "main", "index": 0 }],
+        [{ "node": "Code1", "type": "main", "index": 0 }]
+      ]
+    },
+    "Code": {
+      "main": [[{ "node": "HTTP Request1", "type": "main", "index": 0 }]]
+    },
+    "HTTP Request1": {
+      "main": [[{ "node": "HTTP Request2", "type": "main", "index": 0 }]]
+    },
+    "HTTP Request2": {
+      "main": [[{ "node": "Code2", "type": "main", "index": 0 }]]
+    },
+    "Code2": {
+      "main": [[{ "node": "HTTP Request3", "type": "main", "index": 0 }]]
+    },
+    "HTTP Request3": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" }
+}
