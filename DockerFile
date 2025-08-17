@@ -1,1 +1,20 @@
+# Use official n8n image
 FROM n8nio/n8n:latest
+
+# Set working directory
+WORKDIR /data
+
+# Copy your workflow JSON into the n8n data folder
+COPY "My workflow 2 (1).json" /data/
+
+# Optional: copy package.json if you have custom nodes
+COPY package.json /data/
+
+# Install dependencies if needed
+RUN npm install
+
+# Expose n8n default port
+EXPOSE 5678
+
+# Start n8n with tunnel (optional) or you can configure basic auth via env
+CMD ["n8n", "start", "--tunnel"]
